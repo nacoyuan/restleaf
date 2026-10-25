@@ -1,0 +1,10 @@
+# Generated builds and development caches
+build/
+ModuleCache/
+*.app/
+*.zip
+.DS_Store
+UI-Test.log
+menu-*.png
+休息提醒.png
+完成提醒.png
