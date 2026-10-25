@@ -1,68 +1,72 @@
-<p align="center"><img src="assets/app-icon.png" width="100" alt="歇一会图标"></p>
+<p align="center"><img src="assets/app-icon.png" width="100" alt="RestLeaf icon"></p>
+<h1 align="center">RestLeaf · 歇一会</h1>
+<p align="center">A little space between you and your screen.</p>
+<p align="center"><a href="README.zh-CN.md">简体中文</a> · <a href="https://github.com/nacoyuan/restleaf/releases/latest">Download</a> · <a href="https://github.com/nacoyuan/restleaf/issues">Feedback</a></p>
 
-# 歇一会 · RestLeaf
+[![Checks](https://github.com/nacoyuan/restleaf/actions/workflows/checks.yml/badge.svg)](https://github.com/nacoyuan/restleaf/actions/workflows/checks.yml) ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 
-一个轻量的原生 macOS 菜单栏休息提醒工具。默认连续看屏幕 **40 分钟**，提醒休息 **10 分钟**，两项均可自定义。
+RestLeaf is a native macOS menu bar app that reminds you to step away from your screen. It defaults to **40 minutes of screen time and a 10-minute break**, with both durations configurable.
 
-## 功能
+Built by [Naco](https://github.com/nacoyuan), a product manager and independent vibe coder, from an everyday need: a reminder should be noticeable without taking focus away from ongoing work or AI tasks.
 
-- 常驻菜单栏，关闭设置窗口后继续运行，不长期占据 Dock。
-- 看视频、阅读和没有键鼠操作时也计时。
-- 到点显示醒目的横幅，不抢键盘焦点，不切换当前应用。
-- 横幅 **20 秒自动收起**，保留待休息状态，不重复弹窗。
-- **暂停计时 / 继续计时**：无需设定离开时长，继续时保留剩余时间。
-- **合盖停止计时；重新开盖进入系统后，开始完整的新一轮**，锁屏界面不计时。
-- 支持休息倒计时窗口、重新计时、提示音和菜单栏剩余分钟显示。
-- 支持随电脑登录自动启动，默认关闭。
-- 无账号、无需联网，不读取键盘内容、屏幕内容或浏览记录。
+## Preview
 
-## 使用
+<img src="assets/settings-en.png" width="480" alt="RestLeaf English settings window">
 
-打开「歇一会.app」后，点击菜单栏叶子图标操作。建议先将应用放入「应用程序」，再开启随登录启动。
+The app includes English and Simplified Chinese. It follows the system language by default; choose a language in Settings to override it. Screenshots show an existing user's configuration; first-launch defaults are 40 / 10 minutes.
 
-人在离开但电脑仍亮屏时，可以点「暂停计时」，回来点「继续计时」。暂停不会自动结束；合盖后重新进入系统则按合盖规则开始新一轮。
+## What it does
 
-应用不会锁屏、关闭显示器、模拟输入或暂停 Codex 等其他应用，也不会改变电脑原有的睡眠设置。它无法自动判断人是否仍在看屏幕。
+- Lives in the menu bar, with no persistent Dock icon.
+- Counts videos and reading as screen time, even without keyboard or mouse activity.
+- Shows a clear banner that **does not take keyboard focus** and closes after **20 seconds**.
+- Keeps an unacknowledged reminder in a break-due state; it does not silently count that as a completed break.
+- **Away / Resume Timer** freezes the timer and preserves the remaining time, with no return-time schedule.
+- **Start Over** starts a fresh work cycle.
+- Closing the laptop lid stops the current timer. Opening it and returning to the unlocked, available session starts a full new cycle.
+- Includes a break countdown, optional sound, remaining minutes in the menu bar, and optional launch at login.
 
-## 从源码构建
+## Download and install
 
-需要 Apple Silicon Mac、Xcode 和 Python 3。最低部署目标为 macOS 13；本机使用 Swift 6.4 和 macOS 27 SDK 编译验证，构建需要含 macOS 27 SDK 或更新版本的 Xcode。
+Get the Apple Silicon ZIP from [Releases](https://github.com/nacoyuan/restleaf/releases/latest), extract it, and move the app to Applications before enabling launch at login.
+
+**Early release:** current binaries are locally ad-hoc signed, not Developer ID signed or notarized. They have been tested on the maintainer's Apple Silicon Mac running macOS 27.0.1. Downloaded builds may be blocked by macOS Gatekeeper; this release does not provide the installation experience of a notarized app. You can inspect and build the source yourself.
+
+The deployment target is macOS 13; that is a build setting, **not a claim of testing on every macOS version**. Intel builds and multi-display behavior have not been independently verified. See [ROADMAP.md](ROADMAP.md).
+
+## Privacy and timer behavior
+
+No account, network requests, analytics, camera, screen recording, or keystroke-content monitoring. Preferences stay on your Mac.
+
+RestLeaf does not lock the screen, prevent sleep, simulate input, or control other apps. When you leave with the display still on, choose **Away**, then **Resume Timer** when you return. RestLeaf cannot detect whether you are actually looking at the screen.
+
+Manual Away does not automatically expire. A lid-close/open cycle deliberately starts over instead of resuming the paused time. Ordinary lock/display-sleep events pause screen-time counting; a sufficiently long system absence can count as a natural break.
+
+## Build
+
+Requires an Apple Silicon Mac, Xcode Command Line Tools, and Python 3. Version 1.1 removes the source dependency on a macOS 27-only menu API; the full app has currently been built locally with Swift 6.4 / macOS 27 SDK. Older SDKs are not yet verified.
 
 ```sh
 zsh build.sh
 ```
 
-输出为 `build/歇一会.app`。脚本会生成各尺寸图标、构建应用、进行本地临时签名，并运行计时逻辑测试。
+Output: `build/歇一会.app`. The script generates the original icon, compiles the native app, adds both language resources, ad-hoc signs the bundle, and runs the tests. The Finder name follows the system localization; the app language can be changed independently in Settings.
 
-当前构建供本机使用，尚未进行 Developer ID 正式签名和公证；分发给其他电脑时需要另行处理签名和公证。
-
-## 测试
+## Checks
 
 ```sh
 build/歇一会.app/Contents/MacOS/RestLeaf --self-test
+python3 scripts/check_localizations.py
 ```
 
-22 项逻辑测试覆盖工作截止、待休息、暂停/继续、休息倒计时、离开与返回、合盖后等待进入系统及重新计时。
+There are **22 timer-state checks** plus bilingual resource/format checks. CI runs the timer checks and localization validation on macOS; GUI and hardware behavior still require manual testing. Changing only language, display, or sound preferences does not restart the timer.
 
-开发用的 `--ui-test` 模式将工作和休息加速为各 4 秒，横幅仍在真实 20 秒后收起，85 秒后自动退出。该模式会结束同 bundle ID 的普通运行实例，并在应用所在目录写入测试日志和图片，不用于日常运行。
+The developer-only `--ui-test` mode uses 4-second work/rest cycles, real 20-second banner dismissal, and exits after 85 seconds. It can terminate another normal instance of this app and writes diagnostics next to the test bundle. Do not use it as your daily app.
 
-## 实现
+## Contribute
 
-- Swift / AppKit / SwiftUI 原生界面。
-- 根据截止时间计算剩余时长，后台最多每分钟刷新一次；倒计时窗口打开时才每秒刷新。
-- 使用系统通知处理锁屏、睡眠和显示器状态，使用 IOPMrootDomain 合盖事件通知处理开合盖，不持续轮询。
-- 设置仅保存在本机，不包含分析追踪或网络请求。
-- App 和菜单栏图标均使用原生矢量路径绘制，无在线素材依赖。
+Bug reports, translations, accessibility improvements, and focused fixes are welcome in **English or Chinese**. Start with [CONTRIBUTING.md](CONTRIBUTING.md). For sensitive security reports, see [SECURITY.md](SECURITY.md).
 
-## 项目结构
+## License
 
-| 文件 | 内容 |
-| --- | --- |
-| `Sources/Engine.swift` | 计时状态与 22 项逻辑测试 |
-| `Sources/main.swift` | 菜单栏、设置、横幅、倒计时和系统事件 |
-| `DrawIcon.swift` | App 图标生成 |
-| `pack-icon.py` | ICNS 打包 |
-| `Info.plist` | 应用信息 |
-| `build.sh` | 一键构建 |
-
-当前版本：**1.0.3**。
+[MIT](LICENSE) · Copyright © 2026 Naco. RestLeaf's icon is drawn from original paths in `DrawIcon.swift`.

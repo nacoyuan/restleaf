@@ -1,0 +1,24 @@
+name: Bug report / 问题反馈
+description: Tell us what went wrong / 描述遇到的问题
+title: "[Bug]: "
+body:
+  - type: input
+    id: environment
+    attributes:
+      label: Environment / 使用环境
+      description: macOS version, Mac chip, RestLeaf version / 系统、芯片、应用版本
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce / 复现步骤
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior / 预期与实际表现
+      description: Remove private information from any screenshots. / 截图请先移除私人信息。
+    validations:
+      required: true

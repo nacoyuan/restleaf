@@ -14,16 +14,18 @@ struct Preferences {
     var rest: Int = 10
     var showTime = false
     var sound = false
+    var language: AppLanguage = .system
     static func load() -> Self {
         let d = UserDefaults.standard
         return Self(work: max(1, min(240, d.object(forKey: "work") as? Int ?? 40)),
                     rest: max(1, min(120, d.object(forKey: "rest") as? Int ?? 10)),
-                    showTime: d.bool(forKey: "showTime"), sound: d.bool(forKey: "sound"))
+                    showTime: d.bool(forKey: "showTime"), sound: d.bool(forKey: "sound"),
+                    language: AppLanguage(rawValue: d.string(forKey: "language") ?? "system") ?? .system)
     }
     func save() {
         let d = UserDefaults.standard
         d.set(work, forKey: "work"); d.set(rest, forKey: "rest")
-        d.set(showTime, forKey: "showTime"); d.set(sound, forKey: "sound")
+        d.set(showTime, forKey: "showTime"); d.set(sound, forKey: "sound"); d.set(language.rawValue, forKey: "language")
     }
 }
 
@@ -38,44 +40,49 @@ struct SettingsView: View {
             HStack(spacing: 14) {
                 Image(nsImage: NSApplication.shared.applicationIconImage).resizable().frame(width: 64, height: 64)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("歇一会").font(.system(size: 25, weight: .semibold, design: .rounded))
-                    Text("专注有节奏，休息也从容。 ").foregroundStyle(.secondary)
+                    Text(L("app_name")).font(.system(size: 25, weight: .semibold, design: .rounded))
+                    Text(L("tagline")).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
             VStack(spacing: 18) {
                 HStack {
-                    Label("连续看屏幕", systemImage: "display"); Spacer()
+                    Label(L("screen_time"), systemImage: "display"); Spacer()
                     Stepper(value: $prefs.work, in: 1...240) {
-                        HStack { TextField("分钟", value: $prefs.work, format: .number).textFieldStyle(.roundedBorder).frame(width: 52).accessibilityLabel("连续使用分钟"); Text("分钟") }
+                        HStack { TextField(L("minutes_unit"), value: $prefs.work, format: .number).textFieldStyle(.roundedBorder).frame(width: 52).accessibilityLabel(L("work_accessibility")); Text(L("minutes_unit")) }
                     }.fixedSize()
                 }
                 HStack {
-                    Label("每次休息", systemImage: "leaf"); Spacer()
+                    Label(L("break_duration"), systemImage: "leaf"); Spacer()
                     Stepper(value: $prefs.rest, in: 1...120) {
-                        HStack { TextField("分钟", value: $prefs.rest, format: .number).textFieldStyle(.roundedBorder).frame(width: 52).accessibilityLabel("休息分钟"); Text("分钟") }
+                        HStack { TextField(L("minutes_unit"), value: $prefs.rest, format: .number).textFieldStyle(.roundedBorder).frame(width: 52).accessibilityLabel(L("rest_accessibility")); Text(L("minutes_unit")) }
                     }.fixedSize()
                 }
             }.padding(18).background(.quaternary.opacity(0.45), in: RoundedRectangle(cornerRadius: 14))
             VStack(alignment: .leading, spacing: 15) {
-                Toggle("随电脑登录自动启动", isOn: $launchAtLogin)
-                Toggle("菜单栏显示剩余分钟", isOn: $prefs.showTime)
-                Toggle("休息提醒时播放轻提示音", isOn: $prefs.sound)
+                Toggle(L("launch_login"), isOn: $launchAtLogin)
+                Toggle(L("show_time"), isOn: $prefs.showTime)
+                Toggle(L("sound"), isOn: $prefs.sound)
             }.toggleStyle(.switch)
-            Text("看视频和阅读也计时。合盖停止计时，开盖进入系统后重新开始；人离开但屏幕仍亮着，可从菜单栏选择「暂停计时」。")
+            Picker(L("language"), selection: $prefs.language) {
+                Text(L("follow_system")).tag(AppLanguage.system)
+                Text("English").tag(AppLanguage.english)
+                Text("简体中文").tag(AppLanguage.chinese)
+            }
+            Text(L("usage_hint"))
                 .font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             if !error.isEmpty { Text(error).font(.system(size: 12)).foregroundStyle(.red).fixedSize(horizontal: false, vertical: true) }
             HStack {
-                Button("预览提醒", action: preview)
+                Button(L("preview"), action: preview)
                 Spacer()
-                Button("保存设置") {
+                Button(L("save")) {
                     prefs.work = max(1, min(240, prefs.work)); prefs.rest = max(1, min(120, prefs.rest))
                     error = save(prefs, launchAtLogin) ?? ""
                 }.buttonStyle(.borderedProminent).tint(accent).keyboardShortcut(.defaultAction)
             }
-            Text("修改时间后会重新计时 · 数据仅保存在本机")
+            Text(L("footer"))
                 .font(.system(size: 11)).foregroundStyle(.tertiary)
-        }.padding(26).frame(width: 420).background(Color(nsColor: .windowBackgroundColor))
+        }.padding(26).frame(width: 500).background(Color(nsColor: .windowBackgroundColor))
     }
 }
 
@@ -107,15 +114,15 @@ struct BannerView: View {
                 Text(detail).font(.system(size: 13)).foregroundStyle(.secondary)
                 HStack(spacing: 9) {
                     Button(primary, action: action).buttonStyle(RestButtonStyle(prominent: true))
-                    if let snooze { Button("5 分钟后提醒", action: snooze).buttonStyle(RestButtonStyle()) }
-                    if let leave { Button("暂停计时", action: leave).buttonStyle(RestButtonStyle()) }
+                    if let snooze { Button(L("snooze"), action: snooze).buttonStyle(RestButtonStyle()) }
+                    if let leave { Button(L("away_action"), action: leave).buttonStyle(RestButtonStyle()) }
                 }.padding(.top, 3)
-                Text("20 秒后自动收起 · 不影响当前操作")
+                Text(L("auto_hide"))
                     .font(.system(size: 10)).foregroundStyle(.tertiary)
             }
             Spacer(minLength: 0)
             Button(action: close) { Image(systemName: "xmark").font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary) }
-                .buttonStyle(.plain).help("收起提醒")
+                .buttonStyle(.plain).help(L("dismiss"))
         }.padding(22).frame(width: 540, alignment: .leading)
             .background(Color(nsColor: .windowBackgroundColor), in: RoundedRectangle(cornerRadius: 20))
             .overlay(RoundedRectangle(cornerRadius: 20).strokeBorder(accent.opacity(0.35), lineWidth: 1.5))
@@ -157,13 +164,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Accessory applications have no Dock tile and never take focus at launch.
         NSApp.setActivationPolicy(.accessory)
-        let mainMenu = NSMenu()
-        let appMenuItem = NSMenuItem()
-        let appMenu = NSMenu()
-        add(appMenu, "设置…", #selector(openSettings), key: ",")
-        appMenu.addItem(.separator())
-        add(appMenu, "退出", #selector(quit), key: "q")
-        appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem); NSApp.mainMenu = mainMenu
+        rebuildMainMenu()
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let menu = NSMenu(); menu.delegate = self; status.menu = menu
         let center = NSWorkspace.shared.notificationCenter
@@ -220,6 +221,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             self.log("idle30 cpuSeconds=\(self.cpuSeconds() - self.cpuStart) peakRSSBytes=\(usage.ru_maxrss)")
             NSApp.terminate(nil)
         }
+    }
+    func rebuildMainMenu() {
+        let mainMenu = NSMenu()
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu()
+        add(appMenu, L("settings"), #selector(openSettings), key: ",")
+        appMenu.addItem(.separator())
+        add(appMenu, L("quit"), #selector(quit), key: "q")
+        appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem); NSApp.mainMenu = mainMenu
     }
     func applicationWillTerminate(_ notification: Notification) {
         timer?.invalidate(); hideTimer?.invalidate(); countdownTimer?.invalidate()
@@ -291,17 +301,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             timer?.tolerance = delay >= 60 ? 1 : 0.05
         }
     }
-    func minutes(_ seconds: TimeInterval) -> String { "\(max(1, Int(ceil(seconds / 60)))) 分钟" }
+    func minutes(_ seconds: TimeInterval) -> String { L("minutes_format", max(1, Int(ceil(seconds / 60)))) }
     func statusText() -> String {
         switch engine.phase {
-        case .working: return "距离休息还有 \(minutes(engine.remaining(Date())))"
-        case .due: return "该休息了 · 等待你准备好"
-        case .resting: return "休息中 · 剩余 \(minutes(engine.remaining(Date())))"
-        case .ready: return "休息已完成 · 等待继续使用"
+        case .working: return L("working_status", minutes(engine.remaining(Date())))
+        case .due: return L("due_status")
+        case .resting: return L("resting_status", minutes(engine.remaining(Date())))
+        case .ready: return L("ready_status")
         case .away:
             let elapsed = Date().timeIntervalSince(engine.awaySince ?? Date())
-            return "屏幕未使用 · \(Int(max(0, elapsed) / 60)) 分钟"
-        case .paused: return "计时已暂停 · 点击继续计时恢复"
+            return L("away_status", Int(max(0, elapsed) / 60))
+        case .paused: return L("paused_status")
         }
     }
     func updateStatus() {
@@ -309,8 +319,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         button.image = leafImage(engine.phase)
         button.imagePosition = .imageLeading
         button.title = prefs.showTime ? ([Phase.working, .resting].contains(engine.phase) ? " \(max(1, Int(ceil(engine.remaining(Date()) / 60))))m" : "") : ""
-        button.toolTip = "歇一会 · \(statusText())"
-        button.setAccessibilityLabel("歇一会，\(statusText())")
+        button.toolTip = "\(L("app_name")) · \(statusText())"
+        button.setAccessibilityLabel("\(L("app_name")), \(statusText())")
     }
     func leafImage(_ phase: Phase) -> NSImage {
         let image = NSImage(size: NSSize(width: 23, height: 20), flipped: false) { rect in
@@ -331,36 +341,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
     func menuWillOpen(_ menu: NSMenu) {
         update(); menu.removeAllItems()
-        let title = NSMenuItem(title: "歇一会", action: nil, keyEquivalent: ""); title.isEnabled = false; menu.addItem(title)
+        let title = NSMenuItem(title: L("app_name"), action: nil, keyEquivalent: ""); title.isEnabled = false; menu.addItem(title)
         let state = NSMenuItem(title: statusText(), action: nil, keyEquivalent: ""); state.isEnabled = false; menu.addItem(state)
         menu.addItem(.separator())
-        if engine.phase == .ready { add(menu, "继续使用", #selector(reset)) }
-        else if engine.phase == .resting { add(menu, "查看休息倒计时", #selector(openCountdown)); add(menu, "提前结束休息", #selector(reset)) }
-        add(menu, engine.phase == .paused ? "继续计时" : "暂停计时", #selector(togglePause))
-        if engine.phase == .due { add(menu, "再次显示休息提醒", #selector(showReminder)) }
-        add(menu, "重新计时", #selector(reset)); menu.addItem(.separator())
-        add(menu, "设置…", #selector(openSettings), key: ",")
-        add(menu, "退出", #selector(quit), key: "q")
+        if engine.phase == .ready { add(menu, L("continue_use"), #selector(reset)) }
+        else if engine.phase == .resting { add(menu, L("view_countdown"), #selector(openCountdown)); add(menu, L("end_break"), #selector(reset)) }
+        add(menu, engine.phase == .paused ? L("resume_timer") : L("away_action"), #selector(togglePause))
+        if engine.phase == .due { add(menu, L("show_reminder"), #selector(showReminder)) }
+        add(menu, L("restart"), #selector(reset)); menu.addItem(.separator())
+        add(menu, L("settings"), #selector(openSettings), key: ",")
+        add(menu, L("quit"), #selector(quit), key: "q")
     }
     func add(_ menu: NSMenu, _ title: String, _ selector: Selector, key: String = "") {
         let item = NSMenuItem(title: title, action: selector, keyEquivalent: key)
         item.image = nil
-        if #available(macOS 27.0, *) { item.preferredImageVisibility = .hidden }
+        // Keep menu rows text-only on newer systems without requiring their SDK.
+        if item.responds(to: NSSelectorFromString("setPreferredImageVisibility:")) { item.setValue(2, forKey: "preferredImageVisibility") }
         item.target = self; menu.addItem(item)
     }
     @objc func reset() { countdown?.close(); dismissBanner(); engine.reset(Date()); syncAvailability() }
     @objc func openCountdown() {
         if let countdown { NSApp.activate(ignoringOtherApps: true); countdown.makeKeyAndOrderFront(nil); return }
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 320, height: 245), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "歇一会 · 休息中"; window.isReleasedWhenClosed = false; window.delegate = self
+        window.title = L("countdown_title"); window.isReleasedWhenClosed = false; window.delegate = self
         let stack = NSStackView(); stack.orientation = .vertical; stack.spacing = 18; stack.alignment = .centerX
-        let title = NSTextField(labelWithString: "让眼睛和身体都歇一会")
+        let title = NSTextField(labelWithString: L("countdown_heading"))
         title.font = .systemFont(ofSize: 14, weight: .medium)
         let label = NSTextField(labelWithString: "")
         label.font = .monospacedDigitSystemFont(ofSize: 48, weight: .light)
-        let note = NSTextField(labelWithString: "关掉这个窗口，休息仍会继续")
+        let note = NSTextField(labelWithString: L("countdown_hint"))
         note.font = .systemFont(ofSize: 11); note.textColor = .secondaryLabelColor
-        let button = NSButton(title: "提前结束休息", target: self, action: #selector(reset)); button.bezelStyle = .rounded
+        let button = NSButton(title: L("end_break"), target: self, action: #selector(reset)); button.bezelStyle = .rounded
         [title, label, note, button].forEach { stack.addArrangedSubview($0) }
         let content = NSView(); content.addSubview(stack); stack.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([stack.centerXAnchor.constraint(equalTo: content.centerXAnchor), stack.centerYAnchor.constraint(equalTo: content.centerYAnchor)])
@@ -373,7 +384,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         guard countdown != nil else { return }
         let remaining = engine.phase == .resting ? Int(ceil(engine.remaining(Date()))) : 0
         countdownLabel?.stringValue = String(format: "%02d:%02d", remaining / 60, remaining % 60)
-        if remaining == 0 { countdownTimer?.invalidate(); countdownTimer = nil; countdownButton?.title = "继续使用" }
+        if remaining == 0 { countdownTimer?.invalidate(); countdownTimer = nil; countdownButton?.title = L("continue_use") }
     }
     func windowWillClose(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, window === countdown else { return }
@@ -388,12 +399,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showReminder() {
         let preview = engine.phase != .due
-        showBanner(heading: "该休息一下了", detail: "\(preview ? "提醒预览：" : "")连续看屏幕后，让眼睛休息 \(prefs.rest) 分钟。", primary: "开始休息", action: { [weak self] in self?.startRest() }, snooze: { [weak self] in
+        showBanner(heading: L("break_heading"), detail: (preview ? L("preview_prefix") : "") + L("break_detail", prefs.rest), primary: L("start_break"), action: { [weak self] in self?.startRest() }, snooze: { [weak self] in
             guard let self else { return }; self.dismissBanner(); self.engine.snooze(Date()); self.update()
         }, leave: { [weak self] in self?.togglePause() })
     }
     func showFinished() {
-        showBanner(heading: "休息完成，慢慢回来", detail: "准备好后再开始下一轮，不着急。", primary: "继续使用", action: { [weak self] in self?.reset() }, snooze: nil, leave: nil)
+        showBanner(heading: L("finished_heading"), detail: L("finished_detail"), primary: L("continue_use"), action: { [weak self] in self?.reset() }, snooze: nil, leave: nil)
     }
     func showBanner(heading: String, detail: String, primary: String, action: @escaping () -> Void, snooze: (() -> Void)?, leave: (() -> Void)?) {
         dismissBanner()
@@ -430,10 +441,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 let enabled = SMAppService.mainApp.status == .enabled
                 if login && !enabled { try SMAppService.mainApp.register() }
                 else if !login && SMAppService.mainApp.status != .notRegistered { try SMAppService.mainApp.unregister() }
-                if login && SMAppService.mainApp.status == .requiresApproval { return "请到系统设置 → 通用 → 登录项，允许歇一会自动启动，然后再次保存。" }
-            } catch { return "自动启动设置未完成：\(error.localizedDescription)" }
+                if login && SMAppService.mainApp.status == .requiresApproval { return L("login_approval") }
+            } catch { return L("login_error", error.localizedDescription) }
+            let languageChanged = self.prefs.language != prefs.language
             let timeChanged = self.prefs.work != prefs.work || self.prefs.rest != prefs.rest
             self.prefs = prefs; prefs.save()
+            if languageChanged { self.dismissBanner(); self.countdown?.close(); self.rebuildMainMenu() }
             if timeChanged {
                 self.engine.workDuration = Double(prefs.work * 60); self.engine.restDuration = Double(prefs.rest * 60)
                 self.reset()
@@ -442,13 +455,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }, preview: { [weak self] in self?.showReminder() })
         let controller = NSHostingController(rootView: view)
         let window = NSWindow(contentViewController: controller)
-        window.title = "歇一会 · 设置"; window.styleMask = [.titled, .closable, .miniaturizable]
+        window.title = L("settings_title"); window.styleMask = [.titled, .closable, .miniaturizable]
         window.isReleasedWhenClosed = false; window.center(); settings = window
         NSApp.activate(ignoringOtherApps: true); window.makeKeyAndOrderFront(nil)
     }
 }
 
-if CommandLine.arguments.contains("--self-test") { runEngineTests(); exit(0) }
+if CommandLine.arguments.contains("--self-test") { runEngineTests(); runLocalizationTests(); exit(0) }
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate
