@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.2.0 — 2026-10-25
+
+- Add a single heads-up when 5 minutes remain before a break.
+- Automatically show the final `5:00` → `0:00` countdown beside the menu bar icon, even if the usual remaining-minutes option is off.
+- Show the normal break reminder at zero. Away pauses the countdown; resuming preserves it without repeating the heads-up.
+- Refresh every second only during the final countdown, and cache menu bar state icons.
+- Expand timer checks to 33 and bilingual strings to 50.
+
 ## 1.1.0 — 2026-10-25
 
 - Add English and Simplified Chinese, following system language with a manual setting.

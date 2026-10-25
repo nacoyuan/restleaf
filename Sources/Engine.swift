@@ -23,6 +23,7 @@ struct RestEngine {
     private(set) var phase: Phase = .working
     private(set) var deadline: Date
     private(set) var awaySince: Date?
+    private(set) var fiveMinuteNotified = false
     private var savedPhase: Phase = .working
     private var savedRemaining: TimeInterval = 0
     private var pausedPhase: Phase = .working
@@ -34,15 +35,33 @@ struct RestEngine {
     }
     func remaining(_ now: Date) -> TimeInterval { max(0, deadline.timeIntervalSince(now)) }
     mutating func reset(_ now: Date) {
-        phase = .working; deadline = now.addingTimeInterval(workDuration); awaySince = nil
+        phase = .working; deadline = now.addingTimeInterval(workDuration); awaySince = nil; fiveMinuteNotified = false
     }
     @discardableResult mutating func tick(_ now: Date) -> Bool {
         if phase == .working && now >= deadline { phase = .due; return true }
         if phase == .resting && now >= deadline { phase = .ready; return true }
         return false
     }
+    mutating func takeFiveMinuteWarning(_ now: Date) -> Bool {
+        guard phase == .working, workDuration >= 300, !fiveMinuteNotified,
+              remaining(now) > 0, remaining(now) <= 300 else { return false }
+        fiveMinuteNotified = true
+        return true
+    }
+    func finalCountdownActive(_ now: Date) -> Bool {
+        phase == .working && fiveMinuteNotified && remaining(now) > 0 && remaining(now) <= 300
+    }
+    func nextUpdateDelay(_ now: Date) -> TimeInterval? {
+        guard phase == .working || phase == .resting else { return nil }
+        let left = remaining(now)
+        if finalCountdownActive(now) { return max(0.05, min(1, left)) }
+        if phase == .working && workDuration >= 300 && !fiveMinuteNotified && left > 300 {
+            return max(0.05, min(60, left - 300))
+        }
+        return max(0.05, min(60, left))
+    }
     mutating func startRest(_ now: Date) { phase = .resting; awaySince = nil; deadline = now.addingTimeInterval(restDuration) }
-    mutating func snooze(_ now: Date) { phase = .working; deadline = now.addingTimeInterval(300) }
+    mutating func snooze(_ now: Date) { phase = .working; deadline = now.addingTimeInterval(300); fiveMinuteNotified = true }
     mutating func pause(_ now: Date) {
         guard phase != .paused else { return }
         pausedPhase = phase; pausedRemaining = remaining(now)
@@ -122,5 +141,21 @@ func runEngineTests() {
     check(e.phase == .away && !e.tick(t.addingTimeInterval(99999)), "合盖时手动暂停状态也停止所有定时任务")
     e.startRest(t); e.suspendForLid(t); e.reset(t.addingTimeInterval(10))
     check(e.phase == .working && e.remaining(t.addingTimeInterval(10)) == 2400, "休息期间合盖后开始新一轮使用计时")
+    e.reset(t)
+    check(!e.takeFiveMinuteWarning(t.addingTimeInterval(2099)), "超过五分钟时不提前提醒")
+    check(e.nextUpdateDelay(t.addingTimeInterval(2099)) == 1, "即使刷新不对齐也精确安排五分钟阈值")
+    check(e.takeFiveMinuteWarning(t.addingTimeInterval(2100)) && e.finalCountdownActive(t.addingTimeInterval(2100)), "剩五分钟时提醒并开启倒计时")
+    check(!e.takeFiveMinuteWarning(t.addingTimeInterval(2101)), "五分钟预提醒每轮只出现一次")
+    check(e.nextUpdateDelay(t.addingTimeInterval(2101)) == 1, "最后五分钟每秒刷新菜单栏")
+    e.pause(t.addingTimeInterval(2160))
+    check(!e.finalCountdownActive(t.addingTimeInterval(2160)) && e.nextUpdateDelay(t) == nil, "离开时停止倒计时与后台刷新")
+    e.resume(t.addingTimeInterval(10000))
+    check(e.remaining(t.addingTimeInterval(10000)) == 240 && e.finalCountdownActive(t.addingTimeInterval(10000)) && !e.takeFiveMinuteWarning(t.addingTimeInterval(10000)), "恢复后接着倒计时且不重复预提醒")
+    _ = e.tick(t.addingTimeInterval(10240))
+    check(e.phase == .due && !e.finalCountdownActive(t.addingTimeInterval(10240)), "倒计时结束后进入正式休息提醒")
+    e.reset(t); check(!e.fiveMinuteNotified, "重新开始后允许下一轮预提醒")
+    e.snooze(t); check(e.finalCountdownActive(t) && !e.takeFiveMinuteWarning(t), "延后五分钟显示倒计时但不叠加预提醒")
+    var short = RestEngine(work: 120, rest: 60, now: t)
+    check(!short.takeFiveMinuteWarning(t), "不足五分钟的短周期不显示错误五分钟提醒")
     print("\(count) tests passed")
 }

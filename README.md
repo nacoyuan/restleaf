@@ -21,6 +21,7 @@ The app includes English and Simplified Chinese. It follows the system language 
 - Counts videos and reading as screen time, even without keyboard or mouse activity.
 - Shows a clear banner that **does not take keyboard focus** and closes after **20 seconds**.
 - Keeps an unacknowledged reminder in a break-due state; it does not silently count that as a completed break.
+- Gives a 5-minute heads-up, then automatically shows a second-by-second countdown beside the menu bar icon. The normal break reminder appears at zero. Cycles shorter than 5 minutes skip this heads-up.
 - **Away / Resume Timer** freezes the timer and preserves the remaining time, with no return-time schedule.
 - **Start Over** starts a fresh work cycle.
 - Closing the laptop lid stops the current timer. Opening it and returning to the unlocked, available session starts a full new cycle.
@@ -59,7 +60,7 @@ build/歇一会.app/Contents/MacOS/RestLeaf --self-test
 python3 scripts/check_localizations.py
 ```
 
-There are **22 timer-state checks** plus bilingual resource/format checks. CI runs the timer checks and localization validation on macOS; GUI and hardware behavior still require manual testing. Changing only language, display, or sound preferences does not restart the timer.
+There are **33 timer-state checks** plus checks for 50 bilingual strings and format placeholders. CI runs the timer checks and localization validation on macOS; GUI and hardware behavior still require manual testing. Changing only language, display, or sound preferences does not restart the timer. Background status updates are normally at most once per minute; only the final 5-minute work countdown refreshes every second.
 
 The developer-only `--ui-test` mode uses 4-second work/rest cycles, real 20-second banner dismissal, and exits after 85 seconds. It can terminate another normal instance of this app and writes diagnostics next to the test bundle. Do not use it as your daily app.
 

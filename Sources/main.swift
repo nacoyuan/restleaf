@@ -139,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     var prefs = Preferences.load()
     lazy var engine = RestEngine(work: Double(prefs.work * 60), rest: Double(prefs.rest * 60))
     var status: NSStatusItem!
+    var statusIcons: [String: NSImage] = [:]
     var timer: Timer?
     var hideTimer: Timer?
     var panel: QuietPanel?
@@ -167,6 +168,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         rebuildMainMenu()
         status = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         let menu = NSMenu(); menu.delegate = self; status.menu = menu
+        status.button?.font = .monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
         let center = NSWorkspace.shared.notificationCenter
         for (name, selector) in [
             (NSWorkspace.willSleepNotification, #selector(willSleep(_:))),
@@ -287,7 +289,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         timer?.invalidate(); timer = nil
         let now = Date(); if lidGate.closed { engine.suspendForLid(now) }; _ = engine.tick(now)
         if !unavailable.isEmpty { engine.leave(now) }
+        let prewarning = unavailable.isEmpty && engine.takeFiveMinuteWarning(now)
         updateStatus(); refreshCountdown()
+        if prewarning { showFiveMinuteReminder() }
         let changed = engine.phase != lastPhase
         lastPhase = engine.phase
         if changed { log("phase \(engine.phase.rawValue)") }
@@ -295,8 +299,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             if engine.phase == .due { showReminder() }
             if engine.phase == .ready { showFinished() }
         }
-        if [.working, .resting, .paused].contains(engine.phase) && engine.deadline != .distantFuture {
-            let delay = max(0.1, min(60, engine.remaining(now)))
+        if let delay = engine.nextUpdateDelay(now) {
             timer = Timer.scheduledTimer(withTimeInterval: delay, repeats: false) { [weak self] _ in self?.update() }
             timer?.tolerance = delay >= 60 ? 1 : 0.05
         }
@@ -316,9 +319,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
     func updateStatus() {
         guard let button = status.button else { return }
-        button.image = leafImage(engine.phase)
+        let key = engine.phase.rawValue
+        if statusIcons[key] == nil { statusIcons[key] = leafImage(engine.phase) }
+        button.image = statusIcons[key]
         button.imagePosition = .imageLeading
-        button.title = prefs.showTime ? ([Phase.working, .resting].contains(engine.phase) ? " \(max(1, Int(ceil(engine.remaining(Date()) / 60))))m" : "") : ""
+        if engine.finalCountdownActive(Date()) {
+            let left = max(0, Int(ceil(engine.remaining(Date()))))
+            button.title = String(format: " %d:%02d", left / 60, left % 60)
+        } else {
+            button.title = prefs.showTime ? ([Phase.working, .resting].contains(engine.phase) ? " \(max(1, Int(ceil(engine.remaining(Date()) / 60))))m" : "") : ""
+        }
         button.toolTip = "\(L("app_name")) · \(statusText())"
         button.setAccessibilityLabel("\(L("app_name")), \(statusText())")
     }
@@ -397,6 +407,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         else { engine.pause(Date()); update() }
     }
     @objc func quit() { NSApp.terminate(nil) }
+    func showFiveMinuteReminder() {
+        showBanner(heading: L("five_heading"), detail: L("five_detail"), primary: L("got_it"), action: { [weak self] in self?.dismissBanner() }, snooze: nil, leave: { [weak self] in self?.togglePause() })
+    }
     @objc func showReminder() {
         let preview = engine.phase != .due
         showBanner(heading: L("break_heading"), detail: (preview ? L("preview_prefix") : "") + L("break_detail", prefs.rest), primary: L("start_break"), action: { [weak self] in self?.startRest() }, snooze: { [weak self] in

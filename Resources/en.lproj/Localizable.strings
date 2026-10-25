@@ -45,3 +45,6 @@
 "login_approval" = "Allow RestLeaf in System Settings → General → Login Items, then save again.";
 "login_error" = "Could not update launch at login: %@";
 "settings_title" = "RestLeaf · Settings";
+"five_heading" = "Your break is 5 minutes away";
+"five_detail" = "Time to wrap things up. The countdown is now next to the menu bar icon.";
+"got_it" = "Got It";
